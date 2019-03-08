@@ -1,0 +1,140 @@
+<html>
+<head>
+  <title>Team Mood Panel</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name='description' content='Listen to your team. Optimize for happiness.'>
+  <meta name='keywords' content='team, happiness, emotion, retrospective, mood'>
+  <link rel="stylesheet" href="assets/css/font-awesome.min.css" />
+  <script src="scripts/jquery-3.3.1.min.js"></script>
+  <style>
+    body {
+      font-family: Verdana, Geneva, Tahoma, sans-serif
+    }
+
+    #canvas {
+      max-width: 700px;
+      margin: auto;
+      position: relative;
+    }
+
+    #roulette, #heatmap {
+      display: block;
+      width: 700px;
+      position: absolute;
+    }
+
+    img.circle {
+      display: block;
+      position: absolute;
+    }
+
+    img.circle:not(.mine) {
+      filter: grayscale(50%);
+    }
+
+    img.mine {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <center>
+    <h1>
+      Mood <u><span id="teamname"></span></u> (beta)
+      <i class="fa fa-question-circle-o" style="color: gray; cursor: pointer" title="Team members can anonymously mark how they feel. Old marks slowly vanish until they disappear after 7 days."></i>
+    </h1>
+
+  </center>
+  <div id='canvas'>
+    <img id='roulette' src='roulette.jpg'>
+  </div>
+
+  <script>
+  const uniqueID = () => Math.floor(Math.random() * 10000000);
+
+  const BACKEND_BASE = 'https://13ssj562ne.execute-api.eu-west-1.amazonaws.com/dev';
+  const CIRCLE_DIAMETER = 12;
+  const ROOM_ID = 'main';
+
+  function getQueryParameters() {
+    const vars = {};
+    if (window.location.href.indexOf('?') > 0) {
+      const params = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+      params.forEach(param => {
+        const kv = param.split('=');
+        vars[kv[0]] = param.slice(param.indexOf('=') + 1);
+      });
+    }
+    return vars;
+  };
+
+  function drawPoint(roomId, uid, timestamp, x, y, mine = true) {
+    const point = $(('<img>')).attr('src', 'circle.png')
+                                .addClass('circle')
+                                .css('width', CIRCLE_DIAMETER + 'px')
+                                .css('left', x - CIRCLE_DIAMETER / 2)
+                                .css('top', y - CIRCLE_DIAMETER / 2);
+
+    const timeDiff = Date.now() - timestamp;
+    const opacity = 1 - 0.05 * timeDiff / (12 * 60 * 60 * 1000);  // substract 0.1 each 12h
+    point.css('opacity', opacity > 0.1 ? opacity : 0.1);
+
+    if (mine === true) {
+      point.addClass('mine');
+
+      point.on('click', (e) => {
+        // XXX take the id from the circle's data attr
+        const id = roomId + '-' + uid + '-' + timestamp + '-' + x + '-' + y;
+
+        $.ajax({url: BACKEND_BASE + '/points/' + id, type: 'DELETE'})
+          .done((res) => $(e.target).remove())
+          .fail((err) => alert('Error removing mood point', err));
+      });
+    }
+
+    $('#canvas').append(point);
+  }
+
+  function loadMood() {
+    $.get(BACKEND_BASE + '/points')
+      .done((points) => {
+        points.map(point => point.Key.split('-'))
+              .forEach(point => drawPoint(point[0], point[1], point[2], point[3], point[4], false)); // XXX use ES6 syntax
+      })
+      .fail((err) => alert('Error loading your team\'s mood'));
+  }
+
+  $(document).ready(() => {
+    $("#teamname").text(getQueryParameters().team || 'global');
+
+    loadMood();
+
+    const roulette = document.getElementById('roulette');
+
+    $(roulette).on('click', (e) => {
+      const bounds = e.target.getBoundingClientRect();
+
+      const x = e.clientX - bounds.left;
+      const y = e.clientY - bounds.top;
+
+      const uid = uniqueID();
+      const timestamp = Date.now();
+      drawPoint(ROOM_ID, uid, timestamp, x, y);
+
+      const point = {
+        id: ROOM_ID + '-' + uid + '-' + timestamp + '-' + x + '-' + y
+      };
+
+      $.ajax({
+        url: BACKEND_BASE + '/points',
+        type: 'POST',
+        data: JSON.stringify(point),
+        dataType: 'json'
+      })
+      .fail((err) => alert('Error saving your mood'));
+    });
+  });
+  </script>
+</body>
+</html>

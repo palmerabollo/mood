@@ -1,0 +1,66 @@
+service: lambda-backend
+
+frameworkVersion: ">=1.1.0 <2.0.0"
+
+provider:
+  name: aws
+  region: eu-west-1
+
+  runtime: nodejs8.10
+  memorySize: 512
+  timeout: 10
+
+  environment:
+    S3_BUCKET: ${self:service}-${opt:stage, self:provider.stage}-points
+
+  # XXX actions and resources could be more granular
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - s3:*
+      Resource:
+        - 'arn:aws:s3:::${self:provider.environment.S3_BUCKET}'
+        - 'arn:aws:s3:::${self:provider.environment.S3_BUCKET}/*'
+
+functions:
+  points:
+    handler: handler.points
+    # XXX review if cors is needed once everything is under the same domain + cdn
+    events:
+      - http:
+          path: /{room}/points
+          method: post
+          cors: true
+          request:
+            parameters:
+              paths:
+                team: true
+      - http:
+          path: /{room}/points/{pid}
+          method: delete
+          cors: true
+          request:
+            parameters:
+              paths:
+                pid: true
+                team: true
+      - http:
+          path: /{room}/points
+          method: get
+          cors: true
+          request:
+            parameters:
+              paths:
+                team: true
+
+resources:
+  Resources:
+    S3BucketPhotos:
+      Type: AWS::S3::Bucket
+      Properties:
+        BucketName: ${self:provider.environment.S3_BUCKET}
+        LifecycleConfiguration:
+          Rules:
+          - Id: ExpirationRule
+            ExpirationInDays: '7'
+            Status: Enabled
