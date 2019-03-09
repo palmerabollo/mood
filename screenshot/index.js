@@ -7,7 +7,7 @@ const puppeteer = require('puppeteer');
   // deviceScaleFactor controls image quality, see https://github.com/GoogleChrome/puppeteer/issues/571#issuecomment-325404760
   await page.setViewport({width: 800, height: 600, deviceScaleFactor: 2});
 
-  await page.goto('https://mood.guidogarcia.net/team.html?team=main');
+  await page.goto('https://mood.guidogarcia.net/team.html?team=global');
 
   // XXX try to use a better heuristic to wait for the xhr requests to finish
   //     e.g. await page.waitForNavigation({'waitUntil' : 'networkidle2'});

@@ -24,12 +24,12 @@
       position: absolute;
     }
 
-    img.circle {
+    img.point {
       display: block;
       position: absolute;
     }
 
-    img.circle:not(.mine) {
+    img.point:not(.mine) {
       filter: grayscale(50%);
     }
 
@@ -51,16 +51,15 @@
   </div>
 
   <script>
-  const uniqueID = () => Math.floor(Math.random() * 10000000);
-
   const BACKEND_BASE = 'https://13ssj562ne.execute-api.eu-west-1.amazonaws.com/dev';
-  const CIRCLE_DIAMETER = 12;
-  const ROOM_ID = 'main';
+  const POINT_DIAMETER = 12;
+  const DEFAULT_TEAM_ID = 'global';
 
   function getQueryParameters() {
     const vars = {};
-    if (window.location.href.indexOf('?') > 0) {
-      const params = window.location.href.slice(window.location.href.indexOf('?') + 1).split('&');
+    const href = window.location.href;
+    if (href.indexOf('?') > 0) {
+      const params = href.slice(href.indexOf('?') + 1).split('&');
       params.forEach(param => {
         const kv = param.split('=');
         vars[kv[0]] = param.slice(param.indexOf('=') + 1);
@@ -69,70 +68,60 @@
     return vars;
   };
 
-  function drawPoint(roomId, uid, timestamp, x, y, mine = true) {
-    const point = $(('<img>')).attr('src', 'circle.png')
-                                .addClass('circle')
-                                .css('width', CIRCLE_DIAMETER + 'px')
-                                .css('left', x - CIRCLE_DIAMETER / 2)
-                                .css('top', y - CIRCLE_DIAMETER / 2);
+  function drawPoint(team, x, y, timestamp, pid = null) {
+    const point = $(('<img>')).attr('src', 'point.png')
+                              .addClass('point')
+                              .css('width', POINT_DIAMETER + 'px')
+                              .css('left', x - POINT_DIAMETER / 2)
+                              .css('top', y - POINT_DIAMETER / 2);
 
     const timeDiff = Date.now() - timestamp;
-    const opacity = 1 - 0.05 * timeDiff / (12 * 60 * 60 * 1000);  // substract 0.1 each 12h
+    const opacity = 1 - 0.025 * timeDiff / (6 * 60 * 60 * 1000);  // substract 0.025 each 6h
     point.css('opacity', opacity > 0.1 ? opacity : 0.1);
 
-    if (mine === true) {
-      point.addClass('mine');
+    if (pid) {
+      point.data('pid', pid).addClass('mine');
 
       point.on('click', (e) => {
-        // XXX take the id from the circle's data attr
-        const id = roomId + '-' + uid + '-' + timestamp + '-' + x + '-' + y;
-
-        $.ajax({url: BACKEND_BASE + '/points/' + id, type: 'DELETE'})
-          .done((res) => $(e.target).remove())
-          .fail((err) => alert('Error removing mood point', err));
+        $.ajax({url: BACKEND_BASE + '/' + team + '/points/' + pid, type: 'DELETE'})
+          .done(res => $(e.target).remove())
+          .fail(err => alert('Error removing mood point'));
       });
     }
 
     $('#canvas').append(point);
   }
 
-  function loadMood() {
-    $.get(BACKEND_BASE + '/points')
-      .done((points) => {
-        points.map(point => point.Key.split('-'))
-              .forEach(point => drawPoint(point[0], point[1], point[2], point[3], point[4], false)); // XXX use ES6 syntax
-      })
-      .fail((err) => alert('Error loading your team\'s mood'));
+  function loadPoints(team) {
+    $.get(BACKEND_BASE + '/' + team + '/points')
+      .done(points => points.forEach(point => drawPoint(team, point.x, point.y, point.timestamp)))
+      .fail(err => alert('Error loading your team\'s mood'));
   }
 
   $(document).ready(() => {
-    $("#teamname").text(getQueryParameters().team || 'global');
+    const team = getQueryParameters().team || DEFAULT_TEAM_ID;
+    $("#teamname").text(team);
 
-    loadMood();
+    loadPoints(team);
 
     const roulette = document.getElementById('roulette');
 
     $(roulette).on('click', (e) => {
       const bounds = e.target.getBoundingClientRect();
 
-      const x = e.clientX - bounds.left;
-      const y = e.clientY - bounds.top;
+      const x = Math.round(e.clientX - bounds.left);
+      const y = Math.round(e.clientY - bounds.top);
 
-      const uid = uniqueID();
-      const timestamp = Date.now();
-      drawPoint(ROOM_ID, uid, timestamp, x, y);
-
-      const point = {
-        id: ROOM_ID + '-' + uid + '-' + timestamp + '-' + x + '-' + y
-      };
+      const point = { x, y };
 
       $.ajax({
-        url: BACKEND_BASE + '/points',
+        url: BACKEND_BASE + '/' + team + '/points',
         type: 'POST',
         data: JSON.stringify(point),
         dataType: 'json'
       })
-      .fail((err) => alert('Error saving your mood'));
+      .done(result => drawPoint(team, x, y, Date.now(), result.pid))
+      .fail(err => alert('Error saving your mood'));
     });
   });
   </script>

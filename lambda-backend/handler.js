@@ -1,3 +1,5 @@
+// XXX include simple rate limiter
+
 const AWS = require('aws-sdk');
 const s3 = new AWS.S3({ apiVersion: '2006-03-01' });
 
@@ -8,10 +10,8 @@ const uuid = () => {
   });
 }
 
-const pick = (O, ...K) => K.reduce((o, k) => (o[k]=O[k], o), {});
-
 module.exports.points = async (event, _, callback) => {
-  const team = event.pathParameters.pid;
+  const team = event.pathParameters.team;
 
   switch (event.httpMethod) {
     case 'GET': // GET /{team}/points
@@ -23,9 +23,17 @@ module.exports.points = async (event, _, callback) => {
       try {
         // XXX paginate to be able to deal with more than 1000 points, see "s3-ls" module
         const result = await s3.listObjectsV2(searchParams).promise();
-        const points = result.Contents.map(object => pick(object, 'Key', 'LastModified'));
+        const points = result.Contents.map(object => {
+          const key = object.Key; // XXX assert format $team/$uuid-$x-$y
+
+          return {
+            timestamp: object.LastModified.getTime(), // millis
+            x: key.split('-')[1],
+            y: key.split('-')[2]
+          };
+        });
         callback(null, buildSuccessBody(points));
-      } catch (error) {
+      } catch (err) {
         callback(null, buildErrorBody(err));
       }
 
@@ -44,24 +52,21 @@ module.exports.points = async (event, _, callback) => {
       try {
         await s3.putObject(createParams).promise();
         callback(null, buildSuccessBody({pid: pid}));
-      } catch (error) {
+      } catch (err) {
         callback(null, buildErrorBody(err));
       }
 
       break;
     case 'DELETE': // DELETE /{team}/points/{pid}
-      // XXX users can delete any object in the bucket, not only those created by them
-      let pid = event.pathParameters.pid;
-
       let deleteParams = {
         Bucket: process.env.S3_BUCKET,
-        Key: `${team}/${pid}`
+        Key: `${team}/${event.pathParameters.pid}`
       };
 
       try {
         await s3.deleteObject(deleteParams).promise();
         callback(null, buildSuccessBody());
-      } catch (error) {
+      } catch (err) {
         callback(null, buildErrorBody(err));
       }
 
