@@ -7,6 +7,15 @@
   <meta name='keywords' content='team, happiness, emotion, retrospective, mood'>
   <link rel="stylesheet" href="assets/css/font-awesome.min.css" />
   <script src="scripts/jquery-3.3.1.min.js"></script>
+
+  <!--
+    bootstrap
+    TODO do not use CDN
+  -->
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.7/umd/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1" crossorigin="anonymous"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM" crossorigin="anonymous"></script>
+
   <style>
     body {
       font-family: Verdana, Geneva, Tahoma, sans-serif
@@ -36,16 +45,34 @@
     img.mine {
       cursor: pointer;
     }
+
+    .tooltip-inner {
+      max-width: 300px;
+      width: inherit;
+    }
   </style>
 </head>
 <body>
   <center>
     <h1>
-      Mood <u><span id="teamname"></span></u> (beta)
-      <i class="fa fa-question-circle-o" style="color: gray; cursor: pointer" title="Team members can anonymously mark how they feel. Old marks slowly vanish until they disappear after 7 days."></i>
+      <u><span id="teamname"></span></u>
+      <i class="fa fa-question-circle-o tip" style="color: gray; cursor: pointer" data-tip="tip-help"></i>
     </h1>
-
   </center>
+
+  <template id="tip-help" class="hidden">
+    <p>
+      Team members can <strong>anonymously</strong> say how they feel.
+      Old marks slowly vanish until they disappear after 7 days.
+    </p>
+    <p>
+      <span class="text-muted">
+        This is a <strong>free preview</strong> version.
+        The retention period and the number of points included in the free plan will change.
+      </span>
+    </p>
+  </template>
+
   <div id='canvas'>
     <img id='roulette' src='roulette.jpg'>
   </div>
@@ -99,6 +126,13 @@
   }
 
   $(document).ready(() => {
+    $('.tip').each((index, tip) => {
+      $(tip).tooltip({
+          html: true,
+          title: $('#' + $(tip).data('tip')).html()
+      });
+    });
+
     const team = getQueryParameters().team || DEFAULT_TEAM_ID;
     $("#teamname").text(team);
 

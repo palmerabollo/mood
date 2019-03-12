@@ -104,7 +104,6 @@
 	/**
 	// Signup Form.
 		(function() {
-
 			// Vars.
 				var $form = document.querySelectorAll('#signup-form')[0],
 					$submit = document.querySelectorAll('#signup-form input[type="submit"]')[0],
