@@ -11,7 +11,7 @@ const uuid = () => {
 }
 
 module.exports.points = async (event, _, callback) => {
-  const team = event.pathParameters.team;
+  const team = event.pathParameters.team.toLowerCase();
 
   switch (event.httpMethod) {
     case 'GET': // GET /{team}/points

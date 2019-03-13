@@ -133,7 +133,7 @@
       });
     });
 
-    const team = getQueryParameters().team || DEFAULT_TEAM_ID;
+    const team = (getQueryParameters().team || DEFAULT_TEAM_ID).toLowerCase();
     $("#teamname").text(team);
 
     loadPoints(team);
