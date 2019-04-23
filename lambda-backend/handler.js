@@ -28,8 +28,8 @@ module.exports.points = async (event, _, callback) => {
 
           return {
             timestamp: object.LastModified.getTime(), // millis
-            x: key.split('-')[1],
-            y: key.split('-')[2]
+            x: key.split("/")[1].split('-')[1],
+            y: key.split("/")[1].split('-')[2]
           };
         });
         callback(null, buildSuccessBody(points));
