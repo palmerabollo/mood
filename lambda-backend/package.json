@@ -1,5 +1,5 @@
 {
-    "name": "emotion-lambda-backend",
+    "name": "mood-lambda-backend",
     "version": "1.0.0",
     "private": true,
     "description": "Lambda Function to track user clicks",
